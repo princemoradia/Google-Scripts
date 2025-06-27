@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Calorie Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      color: #333;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .input-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #555;
+    }
+
+    input[type="text"],
+    select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: 5px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    select.empty {
+      color: #999;
+    }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 5px;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
+    .voice-btn {
+      background-color: #2196F3;
+    }
+
+    .voice-btn:hover {
+      background-color: #1976D2;
+    }
+
+    .voice-btn.recording {
+      background-color: #f44336;
+      animation: pulse 1s infinite;
+    }
+
+    .sheet-btn {
+      background-color: #FF9800;
+    }
+
+    .sheet-btn:hover {
+      background-color: #F57C00;
+    }
+
+    @keyframes pulse {
+      0% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+
+      100% {
+        opacity: 1;
+      }
+    }
+
+    .response {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #e8f5e8;
+      border-left: 4px solid #4CAF50;
+      border-radius: 5px;
+      min-height: 20px;
+      white-space: pre-line;
+    }
+
+    .loading {
+      color: #666;
+      font-style: italic;
+    }
+
+    .examples {
+      background-color: #f9f9f9;
+      padding: 15px;
+      border-radius: 5px;
+      margin-top: 20px;
+    }
+
+    .examples h3 {
+      margin-top: 0;
+      color: #333;
+    }
+
+    .examples ul {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+
+    .examples li {
+      margin: 5px 0;
+      color: #666;
+    }
+
+    .sheet-controls {
+      background-color: #f0f8ff;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+      border: 1px solid #ddd;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin: 10px 0;
+    }
+
+    .button-row button {
+      margin: 0;
+    }
+
+    .new-sheet-input {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .new-sheet-input input {
+      flex: 1;
+      margin: 0;
+    }
+
+    .new-sheet-input button {
+      margin: 0;
+      padding: 12px 20px;
+    }
+
+    .warning {
+      background-color: #fff3cd;
+      border: 1px solid #ffeaa7;
+      color: #856404;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      margin: 15px 0;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+      font-size: 14px;
+    }
+
+    .data-table th,
+    .data-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+
+    .data-table th {
+      background-color: #4CAF50;
+      color: white;
+      font-weight: bold;
+    }
+
+    .data-table tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+
+    .data-table tr:hover {
+      background-color: #f5f5f5;
+    }
+
+    .table-summary {
+      background-color: #e3f2fd;
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+
+    .action-buttons {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+}
+
+.action-btn {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    margin: 0;
+    min-width: 50px;
+}
+
+.edit-btn {
+    background-color: #2196F3;
+    color: white;
+}
+
+.edit-btn:hover {
+    background-color: #1976D2;
+}
+
+.delete-btn {
+    background-color: #f44336;
+    color: white;
+}
+
+.delete-btn:hover {
+    background-color: #d32f2f;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 15% auto;
+    padding: 20px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.modal-input {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.modal-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.save-btn {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.save-btn:hover {
+    background-color: #45a049;
+}
+
+.cancel-btn {
+    background-color: #f44336;
+    color: white;
+}
+
+.cancel-btn:hover {
+    background-color: #d32f2f;
+}
+
+
+.delete-modal-content {
+    background-color: white;
+    margin: 15% auto;
+    padding: 20px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 350px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    text-align: center;
+}
+
+.delete-modal-header {
+    margin-bottom: 20px;
+    color: #f44336;
+}
+
+.delete-modal-message {
+    margin: 20px 0;
+    font-size: 16px;
+    color: #333;
+}
+
+.food-name-highlight {
+    font-weight: bold;
+    color: #f44336;
+    background-color: #ffebee;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+
+
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🍎 Calorie Tracker Assistant</h1>
+
+    <!-- Sheet Management Section -->
+    <div class="sheet-controls">
+      <h3>📊 Sheet Management</h3>
+
+      <div class="input-group">
+        <label for="sheetSelect">Select Active Sheet:</label>
+        <select id="sheetSelect" class="empty">
+                    <option value="" disabled selected>No sheets available - Create one below</option>
+                </select>
+        <button onclick="refreshSheetList()" style="margin-top: 10px; width: 100%;">🔄 Refresh Sheet List</button>
+      </div>
+
+      <div class="new-sheet-input">
+        <input type="text" id="newSheetInput" placeholder="Enter new sheet name...">
+        <button class="sheet-btn" onclick="createNewSheet()">➕ Create Sheet</button>
+      </div>
+    </div>
+
+    <!-- Warning if no sheet selected -->
+    <div id="noSheetWarning" class="warning">
+      ⚠️ Please create and select a sheet before entering commands.
+    </div>
+
+    <!-- Command Input Section -->
+    <div class="input-group">
+      <label for="commandInput">Enter your command:</label>
+      <input type="text" id="commandInput" placeholder="e.g., Add 2 apples, Remove last entry, Show today's food" disabled>
+    </div>
+
+    <div class="button-row">
+      <button id="processBtn" onclick="processTextCommand()" disabled>📝 Process Command</button>
+      <button id="voiceBtn" class="voice-btn" onclick="toggleVoiceRecognition()" disabled>🎤 Voice Command</button>
+    </div>
+
+    <div id="response" class="response" style="display: none;"></div>
+
+    <div class="examples">
+      <h3>Example Commands:</h3>
+      <ul>
+        <li><strong>Add food:</strong> "Add pizza", "Add 2 bananas", "Add pastry"</li>
+        <li><strong>Remove:</strong> "Remove last entry", "Delete last item"</li>
+        <li><strong>View:</strong> "Show today's food", "List entries", "List all items"</li>
+        <li><strong>Total:</strong> "Total calories", "Show my total"</li>
+      </ul>
+
+      <h3>Available Foods:</h3>
+      <p>
+        <small>apple, banana, pizza, burger, pasta, rice, chicken, bread, egg, milk, coffee, tea, cake, cookie, pastry, sandwich, salad, yogurt, cheese, chocolate</small>
+      </p>
+    </div>
+
+  </div>
+
+  <!-- Edit Modal -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>✏️ Edit Item</h3>
+        </div>
+        <select id="editFoodSelect" class="modal-input">
+            <option value="">Loading foods...</option>
+        </select>
+        <input type="number" id="editQuantity" class="modal-input" placeholder="Quantity" min="1" value="1">
+        <div class="modal-buttons">
+            <button class="modal-btn save-btn" onclick="saveEdit()">💾 Save</button>
+            <button class="modal-btn cancel-btn" onclick="closeEditModal()">❌ Cancel</button>
+        </div>
+    </div>
+</div>
+
+  <!-- Delete Modal -->
+<div id="deleteModal" class="modal">
+    <div class="delete-modal-content">
+        <div class="delete-modal-header">
+            <h3>🗑️ Confirm Clear</h3>
+        </div>
+        <div class="delete-modal-message">
+            Are you sure you want to clear <span id="deleteItemName" class="food-name-highlight"></span>?
+        </div>
+        <div class="modal-buttons">
+            <button class="modal-btn save-btn" onclick="confirmDelete()" style="background-color: #f44336;">
+                🗑️ Yes, Clear
+            </button>
+            <button class="modal-btn cancel-btn" onclick="closeDeleteModal()">
+                ❌ Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentEditRowIndex = -1;
+    let currentEditSheetName = '';
+    let currentDeleteRowIndex = -1;
+    let currentDeleteFoodName = '';
+    let availableFoods = [];
+    let isDeleting = false;
+    let recognition;
+    let isRecording = false;
+    
+    // Initialize speech recognition if available
+    if ('webkitSpeechRecognition' in window) {
+        recognition = new webkitSpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
+        
+        recognition.onresult = function(event) {
+            const command = event.results[0][0].transcript;
+            document.getElementById('commandInput').value = command;
+            processTextCommand();
+        };
+        
+        recognition.onerror = function(event) {
+            showResponse('Voice recognition error: ' + event.error);
+            stopRecording();
+        };
+        
+        recognition.onend = function() {
+            stopRecording();
+        };
+    } else {
+        document.getElementById('voiceBtn').style.display = 'none';
+    }
+    
+    function processTextCommand() {
+        const command = document.getElementById('commandInput').value.trim();
+        const selectedSheet = document.getElementById('sheetSelect').value;
+        
+        if (!command) {
+            showResponse('Please enter a command!');
+            return;
+        }
+        
+        if (!selectedSheet) {
+            showResponse('Please select a sheet first!');
+            return;
+        }
+        
+        showResponse('Processing...', true);
+        
+        google.script.run
+            .withSuccessHandler(function(result) {
+                showResponse(result);
+                document.getElementById('commandInput').value = '';
+            })
+            .withFailureHandler(function(error) {
+                showResponse('Error: ' + error.toString());
+            })
+            .processCommand(command, selectedSheet);
+    }
+    
+    function createNewSheet() {
+        const sheetName = document.getElementById('newSheetInput').value.trim();
+        
+        if (!sheetName) {
+            showResponse('Please enter a sheet name!');
+            return;
+        }
+        
+        showResponse('Creating sheet...', true);
+        
+        google.script.run
+            .withSuccessHandler(function(result) {
+                showResponse(result);
+                document.getElementById('newSheetInput').value = '';
+                setTimeout(function() {
+                    refreshSheetList();
+                    // Auto-select the new sheet
+                    setTimeout(function() {
+                        const select = document.getElementById('sheetSelect');
+                        if (select.options.length > 0) {
+                            for (let i = 0; i < select.options.length; i++) {
+                                if (select.options[i].value === sheetName) {
+                                    select.value = sheetName;
+                                    updateUIState();
+                                    break;
+                                }
+                            }
+                        }
+                    }, 500);
+                }, 500);
+            })
+            .withFailureHandler(function(error) {
+                showResponse('Error: ' + error.toString());
+            })
+            .createNewSheet(sheetName);
+    }
+    
+    function refreshSheetList() {
+        google.script.run
+            .withSuccessHandler(function(sheets) {
+                const select = document.getElementById('sheetSelect');
+                const currentValue = select.value;
+                
+                select.innerHTML = '';
+                
+                if (sheets.length === 0) {
+                    select.innerHTML = '<option value="" disabled selected>No sheets available - Create one below</option>';
+                    select.classList.add('empty');
+                } else {
+                    select.classList.remove('empty');
+                    // Add placeholder option
+                    const placeholderOption = document.createElement('option');
+                    placeholderOption.value = '';
+                    placeholderOption.disabled = true;
+                    placeholderOption.selected = !currentValue;
+                    placeholderOption.textContent = 'Select a sheet...';
+                    select.appendChild(placeholderOption);
+                    
+                    sheets.forEach(function(sheetName) {
+                        const option = document.createElement('option');
+                        option.value = sheetName;
+                        option.textContent = sheetName;
+                        select.appendChild(option);
+                    });
+                    
+                    // Try to restore previous selection
+                    if (sheets.includes(currentValue)) {
+                        select.value = currentValue;
+                    }
+                }
+                
+                updateUIState();
+            })
+            .withFailureHandler(function(error) {
+                showResponse('Failed to refresh sheet list: ' + error.toString());
+            })
+            .getAllSheets();
+    }
+    
+    function updateUIState() {
+        const selectedSheet = document.getElementById('sheetSelect').value;
+        const hasSelection = selectedSheet && selectedSheet !== '';
+        
+        // Enable/disable command inputs based on sheet selection
+        document.getElementById('commandInput').disabled = !hasSelection;
+        document.getElementById('processBtn').disabled = !hasSelection;
+        document.getElementById('voiceBtn').disabled = !hasSelection;
+        
+        // Show/hide warning
+        const warning = document.getElementById('noSheetWarning');
+        warning.style.display = hasSelection ? 'none' : 'block';
+        
+        // Focus on command input if sheet is selected
+        if (hasSelection) {
+            document.getElementById('commandInput').focus();
+        }
+    }
+    
+    function toggleVoiceRecognition() {
+        if (!recognition) {
+            showResponse('Speech recognition not supported in this browser!');
+            return;
+        }
+        
+        if (isRecording) {
+            recognition.stop();
+        } else {
+            recognition.start();
+            startRecording();
+            showResponse('Listening... Speak your command now!');
+        }
+    }
+    
+    function startRecording() {
+        isRecording = true;
+        const btn = document.getElementById('voiceBtn');
+        btn.textContent = '⏹️ Stop Recording';
+        btn.classList.add('recording');
+    }
+    
+    function stopRecording() {
+        isRecording = false;
+        const btn = document.getElementById('voiceBtn');
+        btn.textContent = '🎤 Voice Command';
+        btn.classList.remove('recording');
+    }
+    
+    function showResponse(message, isLoading = false) {
+        const responseDiv = document.getElementById('response');
+        responseDiv.style.display = 'block';
+        
+        if (isLoading) {
+            responseDiv.classList.add('loading');
+            responseDiv.innerHTML = message;
+            return;
+        } else {
+            responseDiv.classList.remove('loading');
+        }
+        
+        // Check if response is table data
+        if (typeof message === 'string' && message.startsWith('TABLE_DATA:')) {
+            try {
+                const jsonData = message.substring(11); // Remove 'TABLE_DATA:' prefix
+                const tableData = JSON.parse(jsonData);
+                displayTable(tableData);
+            } catch (e) {
+                responseDiv.innerHTML = 'Error displaying table: ' + e.message;
+            }
+        } else {
+            responseDiv.innerHTML = message.replace(/\n/g, '<br>');
+        }
+    }
+
+    function displayTable(tableResponse) {
+        const responseDiv = document.getElementById('response');
+        
+        let html = `<h3>📋 All Items from "${tableResponse.sheetName}"</h3>`;
+        
+        if (!tableResponse.data || tableResponse.data.length === 0) {
+            html += '<p>No entries found!</p>';
+        } else {
+            html += `
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Food Item</th>
+                                <th>Calories (per item)</th>
+                                <th>Quantity</th>
+                                <th>Total Calories</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            let totalCalories = 0;
+            tableResponse.data.forEach(function(row, index) {
+                const total = row[4] || 0;
+                totalCalories += total;
+                const originalRowIndex = row[5] || index; // Use original row index
+                html += `
+                    <tr>
+                        <td>${row[0]}</td>
+                        <td>${row[1]}</td>
+                        <td>${row[2]}</td>
+                        <td>${row[3]}</td>
+                        <td>${total}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="action-btn edit-btn" onclick="editItem(${originalRowIndex}, '${row[1]}', ${row[3]})">
+                                    ✏️ Edit
+                                </button>
+                                <button class="action-btn delete-btn" onclick="showDeleteModal(${originalRowIndex}, '${row[1]}')">
+                                    🗑️ Clear
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-summary">
+                    📊 Total Entries: ${tableResponse.data.length} | 
+                    🔥 Grand Total: ${totalCalories} calories
+                </div>
+            `;
+        }
+        
+        html += `<p><a href="${tableResponse.sheetUrl}" target="_blank">📊 View full sheet</a></p>`;
+        
+        responseDiv.innerHTML = html;
+        
+        // Load available foods for edit modal
+        loadAvailableFoods();
+    }
+
+    function loadAvailableFoods() {
+        google.script.run
+            .withSuccessHandler(function(foods) {
+                availableFoods = foods;
+                const select = document.getElementById('editFoodSelect');
+                select.innerHTML = '<option value="">Select a food...</option>';
+                foods.forEach(function(food) {
+                    const option = document.createElement('option');
+                    option.value = food;
+                    option.textContent = food.charAt(0).toUpperCase() + food.slice(1);
+                    select.appendChild(option);
+                });
+            })
+            .withFailureHandler(function(error) {
+                console.error('Failed to load foods:', error);
+            })
+            .getFoodList();
+    }
+
+    function editItem(rowIndex, currentFood, currentQuantity) {
+        const selectedSheet = document.getElementById('sheetSelect').value;
+        
+        if (!selectedSheet) {
+            alert('No sheet selected!');
+            return;
+        }
+        
+        currentEditRowIndex = rowIndex;
+        currentEditSheetName = selectedSheet;
+        
+        // Set current values in modal
+        document.getElementById('editFoodSelect').value = currentFood;
+        document.getElementById('editQuantity').value = currentQuantity;
+        
+        // Show modal
+        document.getElementById('editModal').style.display = 'block';
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+        currentEditRowIndex = -1;
+        currentEditSheetName = '';
+    }
+
+    function saveEdit() {
+        const foodItem = document.getElementById('editFoodSelect').value;
+        const quantity = document.getElementById('editQuantity').value;
+        
+        if (!foodItem) {
+            alert('Please select a food item!');
+            return;
+        }
+        
+        if (!quantity || quantity < 1) {
+            alert('Please enter a valid quantity!');
+            return;
+        }
+        
+        showResponse('Updating item...', true);
+        
+        google.script.run
+            .withSuccessHandler(function(result) {
+                showResponse(result);
+                closeEditModal();
+                // Refresh the table
+                setTimeout(function() {
+                    const selectedSheet = document.getElementById('sheetSelect').value;
+                    if (selectedSheet) {
+                        google.script.run
+                            .withSuccessHandler(showResponse)
+                            .withFailureHandler(function(error) {
+                                showResponse('Error refreshing table: ' + error.toString());
+                            })
+                            .listAllItems(selectedSheet);
+                    }
+                }, 1000);
+            })
+            .withFailureHandler(function(error) {
+                showResponse('Error: ' + error.toString());
+            })
+            .updateItem(currentEditSheetName, currentEditRowIndex, foodItem, quantity);
+    }
+
+    // FIXED: Renamed function to avoid conflict and properly show modal
+    function showDeleteModal(rowIndex, foodName) {
+        const selectedSheet = document.getElementById('sheetSelect').value;
+        
+        if (!selectedSheet) {
+            alert('No sheet selected!');
+            return;
+        }
+        
+        // Validate row index
+        if (!rowIndex || rowIndex < 2) {
+            alert('Invalid row index!');
+            return;
+        }
+        
+        // Store the details for the confirmation
+        currentDeleteRowIndex = rowIndex;
+        currentDeleteFoodName = foodName;
+        
+        // Set the food name in the modal
+        document.getElementById('deleteItemName').textContent = foodName;
+        
+        // Show the delete confirmation modal
+        document.getElementById('deleteModal').style.display = 'block';
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').style.display = 'none';
+        currentDeleteRowIndex = -1;
+        currentDeleteFoodName = '';
+    }
+
+
+    function confirmDelete() {
+    if (isDeleting) return;
+    isDeleting = true;
+
+    const selectedSheet = document.getElementById('sheetSelect').value;
+
+    if (!selectedSheet || currentDeleteRowIndex === -1) {
+        alert('Error: No item selected for deletion!');
+        isDeleting = false;
+        return;
+    }
+
+    showResponse('Clearing item...', true);
+
+    google.script.run
+        .withSuccessHandler(function(result) {
+            isDeleting = false;
+            showResponse(result);
+            closeDeleteModal();
+            setTimeout(function() {
+                google.script.run
+                    .withSuccessHandler(showResponse)
+                    .withFailureHandler(function(error) {
+                        showResponse('Error refreshing table: ' + error.toString());
+                    })
+                    .listAllItems(selectedSheet);
+            }, 1000);
+        })
+        .withFailureHandler(function(error) {
+            isDeleting = false;
+            showResponse('Error: ' + error.toString());
+            closeDeleteModal();
+        })
+        .deleteItem(selectedSheet, currentDeleteRowIndex);
+}
+
+
+
+    // Close modal when clicking outside of it
+    window.onclick = function(event) {
+        const editModal = document.getElementById('editModal');
+        const deleteModal = document.getElementById('deleteModal');
+        
+        if (event.target === editModal) {
+            closeEditModal();
+        }
+        
+        if (event.target === deleteModal) {
+            closeDeleteModal();
+        }
+    }
+
+    // Event listeners
+    document.getElementById('commandInput').addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+            processTextCommand();
+        }
+    });
+    
+    document.getElementById('newSheetInput').addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+            createNewSheet();
+        }
+    });
+    
+    document.getElementById('sheetSelect').addEventListener('change', updateUIState);
+    
+    // Initialize when page loads
+    window.onload = function() {
+        refreshSheetList();
+    };
+</script>
+
+</body>
+
+</html>
+

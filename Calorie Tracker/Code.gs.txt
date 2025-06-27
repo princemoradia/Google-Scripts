@@ -1,0 +1,487 @@
+let SHEET_ID = '';
+
+const FOOD_DATABASE = {
+  'apple': 95, 'banana': 105, 'pizza': 285, 'burger': 540, 'pasta': 220,
+  'rice': 205, 'chicken': 231, 'bread': 79, 'egg': 78, 'milk': 149,
+  'coffee': 2, 'tea': 2, 'cake': 365, 'cookie': 49, 'pastry': 250,
+  'sandwich': 300, 'salad': 33, 'yogurt': 100, 'cheese': 113, 'chocolate': 546
+};
+
+const AUTHORIZED_USERS = [
+  'pm@satvasolutions.com'
+];
+
+function doGet() {
+  const userEmail = Session.getActiveUser().getEmail();
+  
+  if (!AUTHORIZED_USERS.includes(userEmail)) {
+    return HtmlService.createHtmlOutput(`
+      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 30px; text-align: center; background: #f8f9fa; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <h2 style="color: #dc3545;">🚫 Access Denied</h2>
+        <p style="color: #666; margin: 20px 0;">You are not authorized to use this application.</p>
+        <p style="color: #999; font-size: 14px;">Your email: <strong>${userEmail}</strong></p>
+        <p style="color: #999; font-size: 12px; margin-top: 30px;">Contact the app owner if you need access.</p>
+      </div>
+    `).setTitle('Access Denied - Calorie Tracker');
+  }
+
+  return HtmlService.createTemplateFromFile('index').evaluate()
+    .setTitle('Calorie Tracker')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+function getOrCreateSpreadsheet() {
+  try {
+    SHEET_ID = PropertiesService.getScriptProperties().getProperty('SHEET_ID');
+    
+    let spreadsheet;
+    
+    if (SHEET_ID) {
+      try {
+        spreadsheet = SpreadsheetApp.openById(SHEET_ID);
+        spreadsheet.getName();
+      } catch (e) {
+        SHEET_ID = null;
+      }
+    }
+    
+    if (!SHEET_ID) {
+      spreadsheet = SpreadsheetApp.create('My Calorie Tracker');
+      SHEET_ID = spreadsheet.getId();
+      PropertiesService.getScriptProperties().setProperty('SHEET_ID', SHEET_ID);
+      
+      // Delete the default sheet
+      const defaultSheet = spreadsheet.getActiveSheet();
+      if (defaultSheet.getName() === 'Sheet1') {
+        spreadsheet.deleteSheet(defaultSheet);
+      }
+    }
+    
+    return spreadsheet;
+    
+  } catch (error) {
+    throw new Error('Spreadsheet access failed: ' + error.toString());
+  }
+}
+
+function setupSheetHeaders(sheet) {
+  sheet.getRange(1, 1, 1, 5).setValues([['Date', 'Food Item', 'Calories', 'Quantity', 'Total Calories']]);
+  sheet.getRange(1, 1, 1, 5).setFontWeight('bold');
+  sheet.autoResizeColumns(1, 5);
+}
+
+function getSheetUrl(sheetName) {
+  try {
+    const spreadsheet = getOrCreateSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    if (!sheet) {
+      return spreadsheet.getUrl();
+    }
+    
+    const sheetId = sheet.getSheetId();
+    return `${spreadsheet.getUrl()}#gid=${sheetId}`;
+  } catch (error) {
+    return '';
+  }
+}
+
+function createNewSheet(sheetName) {
+  try {
+    if (!sheetName || sheetName.trim() === '') {
+      return '❌ Please provide a valid sheet name!';
+    }
+    
+    const cleanSheetName = sheetName.trim();
+    const spreadsheet = getOrCreateSpreadsheet();
+    
+    // Check if sheet already exists
+    try {
+      const existingSheet = spreadsheet.getSheetByName(cleanSheetName);
+      if (existingSheet) {
+        return `❌ Sheet "${cleanSheetName}" already exists!`;
+      }
+    } catch (e) {
+      // Sheet doesn't exist, which is what we want
+    }
+    
+    // Create new sheet
+    const newSheet = spreadsheet.insertSheet(cleanSheetName);
+    setupSheetHeaders(newSheet);
+    
+    const sheetUrl = getSheetUrl(cleanSheetName);
+    return `✅ Created new sheet: "${cleanSheetName}"\n📊 Direct link: ${sheetUrl}`;
+    
+  } catch (error) {
+    return '❌ Failed to create sheet: ' + error.toString();
+  }
+}
+
+function getAllSheets() {
+  try {
+    const spreadsheet = getOrCreateSpreadsheet();
+    const sheets = spreadsheet.getSheets();
+    return sheets.map(sheet => sheet.getName());
+  } catch (error) {
+    return [];
+  }
+}
+
+function processCommand(command, selectedSheet) {
+  try {
+    const lowerCommand = command.toLowerCase().trim();
+    
+    if (!command || command.length < 2) {
+      return '❌ Please enter a valid command.';
+    }
+    
+    if (!selectedSheet) {
+      return '❌ Please select a sheet first!';
+    }
+    
+    if (lowerCommand.includes('add')) {
+      return addFood(lowerCommand, selectedSheet);
+    }
+    
+    if (lowerCommand.includes('remove') || lowerCommand.includes('delete')) {
+      return removeFood(lowerCommand, selectedSheet);
+    }
+    
+    // if (lowerCommand.includes('show') || lowerCommand.includes('view') || lowerCommand.includes('list')) {
+    //   return viewEntries(selectedSheet);
+    // }
+    
+    if (lowerCommand.includes('total') || lowerCommand.includes('sum')) {
+      return getTotalCalories(selectedSheet);
+    }
+
+    if (lowerCommand.includes('list all') || lowerCommand.includes('all items')) {
+      return listAllItems(selectedSheet);
+    }
+    
+    if (lowerCommand.includes('help')) {
+      return getHelp();
+    }
+    
+    return '❓ Command not recognized. Try "help" for available commands.';
+    
+  } catch (error) {
+    return '🚫 Error: ' + error.toString();
+  }
+}
+
+function addFood(command, sheetName) {
+  try {
+    let foodItem = '';
+    let quantity = 1;
+    
+    const quantityMatch = command.match(/(\d+)/);
+    if (quantityMatch) {
+      quantity = parseInt(quantityMatch[1]);
+    }
+    
+    for (let food in FOOD_DATABASE) {
+      if (command.includes(food)) {
+        foodItem = food;
+        break;
+      }
+    }
+    
+    if (!foodItem) {
+      return '❌ Food not found! Available: ' + Object.keys(FOOD_DATABASE).slice(0, 10).join(', ') + '...';
+    }
+    
+    const spreadsheet = getOrCreateSpreadsheet();
+    let sheet;
+    
+    try {
+      sheet = spreadsheet.getSheetByName(sheetName);
+      if (!sheet) {
+        sheet = spreadsheet.insertSheet(sheetName);
+        setupSheetHeaders(sheet);
+      }
+    } catch (e) {
+      sheet = spreadsheet.insertSheet(sheetName);
+      setupSheetHeaders(sheet);
+    }
+    
+    const currentDate = new Date().toLocaleDateString();
+    const calories = FOOD_DATABASE[foodItem];
+    const totalCalories = calories * quantity;
+    
+    sheet.appendRow([currentDate, foodItem, calories, quantity, totalCalories]);
+    
+    const sheetUrl = getSheetUrl(sheetName);
+    return `✅ Added ${quantity} ${foodItem}(s) = ${totalCalories} calories to "${sheetName}"!\n\n📊 View sheet: ${sheetUrl}`;
+    
+  } catch (error) {
+    return '❌ Add failed: ' + error.toString();
+  }
+}
+
+function removeFood(command, sheetName) {
+  try {
+    const spreadsheet = getOrCreateSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    
+    if (!sheet) {
+      return `❌ Sheet "${sheetName}" not found!`;
+    }
+    
+    const lastRow = sheet.getLastRow();
+    
+    if (lastRow > 1) {
+      const deletedRow = sheet.getRange(lastRow, 1, 1, 5).getValues()[0];
+      sheet.deleteRow(lastRow);
+      
+      const sheetUrl = getSheetUrl(sheetName);
+      return `✅ Removed from "${sheetName}": ${deletedRow[1]} (${deletedRow[4]} calories)\n\n📊 View sheet: ${sheetUrl}`;
+    } else {
+      return `❌ No entries to remove in "${sheetName}"!`;
+    }
+  } catch (error) {
+    return '❌ Remove failed: ' + error.toString();
+  }
+}
+
+function viewEntries(sheetName) {
+  try {
+    const spreadsheet = getOrCreateSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    
+    if (!sheet) {
+      return `❌ Sheet "${sheetName}" not found!`;
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    
+    if (data.length <= 1) {
+      return `📋 No entries yet in "${sheetName}"! Try adding some food first.`;
+    }
+    
+    let result = `📋 Recent entries from "${sheetName}":\n\n`;
+    const startRow = Math.max(1, data.length - 5);
+    
+    for (let i = startRow; i < data.length; i++) {
+      const row = data[i];
+      result += `${row[0]} - ${row[1]} x${row[3]} = ${row[4]} cal\n`;
+    }
+    
+    const sheetUrl = getSheetUrl(sheetName);
+    result += `\n📊 View full sheet: ${sheetUrl}`;
+    return result;
+    
+  } catch (error) {
+    return '❌ View failed: ' + error.toString();
+  }
+}
+
+function getTotalCalories(sheetName) {
+  try {
+    const spreadsheet = getOrCreateSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    
+    if (!sheet) {
+      return `❌ Sheet "${sheetName}" not found!`;
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    
+    if (data.length <= 1) {
+      return `📊 No data yet in "${sheetName}"! Add some food first.`;
+    }
+    
+    const today = new Date().toLocaleDateString();
+    let totalToday = 0;
+    let totalAll = 0;
+    let todayCount = 0;
+    
+    for (let i = 1; i < data.length; i++) {
+      const calories = data[i][4] || 0;
+      totalAll += calories;
+      
+      if (data[i][0] === today) {
+        totalToday += calories;
+        todayCount++;
+      }
+    }
+    
+    const sheetUrl = getSheetUrl(sheetName);
+    return `📊 "${sheetName}" - Today: ${totalToday} calories (${todayCount} items)\n📈 All time: ${totalAll} calories\n\n📊 View sheet: ${sheetUrl}`;
+    
+  } catch (error) {
+    return '❌ Total failed: ' + error.toString();
+  }
+}
+
+function listAllItems(sheetName) {
+  try {
+    const spreadsheet = getOrCreateSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    
+    if (!sheet) {
+      return `❌ Sheet "${sheetName}" not found!`;
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    
+    if (data.length <= 1) {
+      return `📋 No entries yet in "${sheetName}"! Try adding some food first.`;
+    }
+    
+    // Create table data as a simple array, filtering out empty rows
+    const tableData = [];
+    
+    for (let i = 1; i < data.length; i++) {
+      // Skip empty rows (where food item is empty)
+      if (data[i][1] && data[i][1].toString().trim() !== '') {
+        tableData.push([
+          data[i][0] || '', // date
+          data[i][1] || '', // food
+          data[i][2] || 0,  // calories
+          data[i][3] || 0,  // quantity
+          data[i][4] || 0,  // total
+          i + 1             // CORRECT: actual spreadsheet row number (i+1 because spreadsheet rows are 1-based)
+        ]);
+      }
+    }
+    
+    if (tableData.length === 0) {
+      return `📋 No entries yet in "${sheetName}"! Try adding some food first.`;
+    }
+    
+    const sheetUrl = getSheetUrl(sheetName);
+    
+    // Return as JSON string with special prefix to identify table data
+    return `TABLE_DATA:${JSON.stringify({
+      data: tableData,
+      sheetName: sheetName,
+      sheetUrl: sheetUrl
+    })}`;
+    
+  } catch (error) {
+    return '❌ List failed: ' + error.toString();
+  }
+}
+
+
+function deleteItem(sheetName, rowIndex) {
+  try {
+    const spreadsheet = getOrCreateSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    
+    if (!sheet) {
+      return `❌ Sheet "${sheetName}" not found!`;
+    }
+    
+    const lastRow = sheet.getLastRow();
+    
+    
+    // Get the data before clearing for confirmation
+    const deletedRow = sheet.getRange(rowIndex, 1, 1, 5).getValues()[0];
+    
+    // Check if the row actually has data
+    if (!deletedRow[1] || deletedRow[1].toString().trim() === '') {
+      return `❌ Row ${rowIndex} is already empty or invalid!`;
+    }
+    
+    // Clear the row content instead of deleting the row
+    sheet.getRange(rowIndex, 1, 1, 5).clearContent();
+    
+    const sheetUrl = getSheetUrl(sheetName);
+    return `✅ Cleared: ${deletedRow[1]} x${deletedRow[3]} = ${deletedRow[4]} calories\n\n📊 View sheet: ${sheetUrl}`;
+    
+  } catch (error) {
+    return '❌ Clear failed: ' + error.toString();
+  }
+}
+
+
+function updateItem(sheetName, rowIndex, foodItem, quantity) {
+  try {
+    const spreadsheet = getOrCreateSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    
+    if (!sheet) {
+      return `❌ Sheet "${sheetName}" not found!`;
+    }
+    
+    // Validate food item
+    if (!FOOD_DATABASE[foodItem.toLowerCase()]) {
+      return `❌ Food "${foodItem}" not found in database!`;
+    }
+    
+    // Validate quantity
+    const qty = parseInt(quantity);
+    if (isNaN(qty) || qty <= 0) {
+      return `❌ Invalid quantity: ${quantity}`;
+    }
+    
+    const lastRow = sheet.getLastRow();
+    // rowIndex is already the actual spreadsheet row number
+    const actualRowIndex = rowIndex;
+    
+    if (actualRowIndex > lastRow || actualRowIndex < 2) {
+      return `❌ Invalid row index! Row: ${actualRowIndex}, Last: ${lastRow}`;
+    }
+    
+    // Get current date and calculate new values
+    const currentDate = sheet.getRange(actualRowIndex, 1).getValue();
+    const calories = FOOD_DATABASE[foodItem.toLowerCase()];
+    const totalCalories = calories * qty;
+    
+    // Update the row
+    sheet.getRange(actualRowIndex, 2, 1, 4).setValues([[
+      foodItem.toLowerCase(),
+      calories,
+      qty,
+      totalCalories
+    ]]);
+    
+    const sheetUrl = getSheetUrl(sheetName);
+    return `✅ Updated: ${foodItem} x${qty} = ${totalCalories} calories\n\n📊 View sheet: ${sheetUrl}`;
+    
+  } catch (error) {
+    return '❌ Update failed: ' + error.toString();
+  }
+}
+function getFoodList() {
+  return Object.keys(FOOD_DATABASE);
+}
+
+
+
+function getHelp() {
+  return `🍎 Calorie Tracker Commands:
+
+📝 ADD FOOD:
+- "Add pizza" - adds 1 pizza
+- "Add 2 apples" - adds 2 apples
+
+🗑️ REMOVE:
+- "Remove last entry"
+- "Delete last item"
+
+📋 VIEW DATA:
+- "Show entries" - recent items
+- "List today's food"
+- "List all items" - all entries in table
+
+📊 TOTALS:
+- "Total calories" - today + all time
+- "Show my total"
+
+🍕 Available foods: ${Object.keys(FOOD_DATABASE).slice(0, 15).join(', ')}...`;
+}
+
+function testApp() {
+  try {
+    const result = getOrCreateSpreadsheet();
+    return 'Success! Spreadsheet created: ' + result.getUrl();
+  } catch (error) {
+    return 'Test failed: ' + error.toString();
+  }
+}

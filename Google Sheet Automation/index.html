@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Dynamic Google Sheets Automation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 2.5em;
+      font-weight: 300;
+    }
+
+    .header p {
+      margin: 10px 0 0 0;
+      opacity: 0.9;
+      font-size: 1.1em;
+    }
+
+    .content {
+      padding: 30px;
+    }
+
+    .section {
+      margin-bottom: 40px;
+      padding: 25px;
+      border-radius: 10px;
+      background: #f8f9fa;
+      border-left: 5px solid #4CAF50;
+    }
+
+    .section h2 {
+      margin-top: 0;
+      color: #333;
+      font-size: 1.5em;
+      font-weight: 500;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #555;
+    }
+
+    input[type="text"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #e1e1e1;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.3s ease;
+    }
+
+    input[type="text"]:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #4CAF50;
+      box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+    }
+
+    button {
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      margin: 5px;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+    }
+
+    button:disabled {
+      background: #cccccc;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #2196F3, #1976D2);
+    }
+
+    .btn-secondary:hover {
+      box-shadow: 0 5px 15px rgba(33, 150, 243, 0.3);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #f44336, #d32f2f);
+    }
+
+    .btn-danger:hover {
+      box-shadow: 0 5px 15px rgba(244, 67, 54, 0.3);
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #FF9800, #F57C00);
+    }
+
+    .btn-warning:hover {
+      box-shadow: 0 5px 15px rgba(255, 152, 0, 0.3);
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 15px 0;
+    }
+
+    .response {
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 8px;
+      min-height: 50px;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .response.success {
+      background: #e8f5e8;
+      border: 1px solid #4CAF50;
+      color: #2e7d32;
+    }
+
+    .response.error {
+      background: #ffebee;
+      border: 1px solid #f44336;
+      color: #c62828;
+    }
+
+    .response.loading {
+      background: #e3f2fd;
+      border: 1px solid #2196F3;
+      color: #1565c0;
+      font-style: italic;
+    }
+
+    .columns-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 15px 0;
+    }
+
+    .column-input {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .column-tag {
+      display: inline-block;
+      background: #e3f2fd;
+      color: #1565c0;
+      padding: 5px 10px;
+      border-radius: 20px;
+      margin: 5px;
+      font-size: 14px;
+      border: 1px solid #bbdefb;
+    }
+
+    .column-tag .remove {
+      margin-left: 8px;
+      cursor: pointer;
+      color: #f44336;
+      font-weight: bold;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      font-size: 14px;
+    }
+
+    .data-table th,
+    .data-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #e1e1e1;
+    }
+
+    .data-table th {
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      color: white;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .data-table tr:hover {
+      background: #f5f5f5;
+    }
+
+    .data-table tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+
+    .data-table tr:nth-child(even):hover {
+      background: #f0f0f0;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 5px;
+    }
+
+    .action-btn {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin: 0;
+    }
+
+    .action-btn:hover {
+      transform: scale(1.05);
+    }
+
+    .edit-btn {
+      background: #2196F3;
+      color: white;
+    }
+
+    .delete-btn {
+      background: #f44336;
+      color: white;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(5px);
+    }
+
+    .modal-content {
+      background: white;
+      margin: 5% auto;
+      padding: 30px;
+      border-radius: 15px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: modalSlideIn 0.3s ease;
+    }
+
+    @keyframes modalSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-50px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modal-header {
+      margin-bottom: 25px;
+      text-align: center;
+      color: #333;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-top: 25px;
+    }
+
+    .row-inputs {
+      display: grid;
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .row-input-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .row-input-group label {
+      min-width: 120px;
+      margin-bottom: 0;
+      font-weight: 500;
+    }
+
+    .row-input-group input {
+      flex: 1;
+      margin: 0;
+    }
+
+    .stats-card {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    .stats-card h3 {
+      margin: 0 0 10px 0;
+      font-size: 2em;
+    }
+
+    .stats-card p {
+      margin: 0;
+      opacity: 0.9;
+    }
+
+    .warning {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      color: #856404;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+
+    .info {
+      background: #e3f2fd;
+      border: 1px solid #bbdefb;
+      color: #1565c0;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+
+    @media (max-width: 768px) {
+      .content {
+        padding: 20px;
+      }
+
+      .section {
+        padding: 20px;
+      }
+
+      .header h1 {
+        font-size: 2em;
+      }
+
+      .button-row {
+        flex-direction: column;
+      }
+
+      .button-row button {
+        width: 100%;
+      }
+
+      .modal-content {
+        margin: 10% auto;
+        width: 95%;
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📊 Dynamic Google Sheets Automation</h1>
+      <p>Create, manage, and automate your Google Sheets with ease</p>
+    </div>
+
+    <div class="content">
+      <!-- Sheet Management Section -->
+      <div class="section">
+        <h2>🏗️ Sheet Management</h2>
+
+        <div class="form-group">
+          <label for="sheetSelect">Active Sheet:</label>
+          <select id="sheetSelect">
+            <option value="" disabled selected>Select a sheet...</option>
+          </select>
+        </div>
+
+        <div class="button-row">
+          <button onclick="refreshSheets()">🔄 Refresh Sheets</button>
+          <button onclick="showCreateSheetModal()" class="btn-secondary">➕ Create New Sheet</button>
+          <button onclick="showAddColumnModal()" class="btn-warning" id="addColumnBtn" disabled>📝 Add Column</button>
+          <button onclick="showAddRowModal()" class="btn-secondary" id="addRowBtn" disabled>➕ Add Row</button>
+          <button onclick="showDeleteSheetModal()" class="btn-danger" id="deleteSheetBtn" disabled>🗑️ Delete Sheet</button>
+        </div>
+
+        <div id="sheetInfo" class="info" style="display: none;">
+          <p><strong>Sheet URL:</strong> <a id="sheetUrl" href="#" target="_blank">Open in Google Sheets</a></p>
+        </div>
+      </div>
+
+      <!-- Data Management Section -->
+      <div class="section">
+        <h2>📋 Data Management</h2>
+
+        <div class="button-row">
+          <button onclick="loadSheetData()" id="loadDataBtn" disabled>📊 Load All Data</button>
+        </div>
+
+        <div id="dataContainer"></div>
+      </div>
+
+      <!-- Response Section -->
+      <div id="response" style="display: none;"></div>
+    </div>
+  </div>
+
+  <!-- Create Sheet Modal -->
+  <div id="createSheetModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>📊 Create New Sheet</h2>
+      </div>
+
+     <div class="form-group">
+        <label for="newSheetName">Sheet Name:</label>
+        <input type="text" id="newSheetName" placeholder="Enter sheet name...">
+      </div>
+
+      <div class="form-group">
+        <label>Columns:</label>
+        <div id ="columnsDisplay"></div>
+        <div class="columns-container">
+          <input type="text" id="newColumnInput" placeholder="Enter column name..." class="column-input">
+          <button onclick="addColumn()" class="btn-secondary">➕ Add Column</button>
+        </div>
+      </div>
+
+      <div class="modal-buttons">
+        <button onclick="createSheet()" class="btn-secondary">✅ Create Sheet</button>
+        <button onclick="closeCreateSheetModal()" class="btn-danger">❌ Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Column Modal -->
+  <div id="addColumnModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>📝 Add Column</h2>
+      </div>
+
+      <div class="form-group">
+        <label for="columnName">Column Name:</label>
+        <input type="text" id="columnName" placeholder="Enter column name...">
+      </div>
+
+      <div class="modal-buttons">
+        <button onclick="addColumnToSheet()">✅ Add Column</button>
+        <button onclick="closeAddColumnModal()" class="btn-danger">❌ Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Row Modal -->
+  <div id="addRowModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>➕ Add New Row</h2>
+      </div>
+
+      <div id="rowInputsContainer" class="row-inputs">
+        <!-- Dynamic row inputs will be populated here -->
+      </div>
+
+      <div class="modal-buttons">
+        <button onclick="addRowToSheet()">✅ Add Row</button>
+        <button onclick="closeAddRowModal()" class="btn-danger">❌ Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Row Modal -->
+  <div id="editRowModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>✏️ Edit Row</h2>
+      </div>
+
+      <div id="editRowInputsContainer" class="row-inputs">
+        <!-- Dynamic edit inputs will be populated here -->
+      </div>
+
+      <div class="modal-buttons">
+        <button onclick="updateRowData()">✅ Update Row</button>
+        <button onclick="closeEditRowModal()" class="btn-danger">❌ Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Sheet Modal -->
+  <div id="deleteSheetModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>🗑️ Delete Sheet</h2>
+      </div>
+
+      <div class="warning">
+        <p><strong>⚠️ Warning!</strong></p>
+        <p>Are you sure you want to delete the sheet "<span id="deleteSheetName"></span>"?</p>
+        <p>This action cannot be undone!</p>
+      </div>
+
+      <div class="modal-buttons">
+        <button onclick="confirmDeleteSheet()" class="btn-danger">🗑️ Yes, Delete</button>
+        <button onclick="closeDeleteSheetModal()">❌ Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global variables
+    let currentColumns = [];
+    let currentSheetName = '';
+    let currentEditRowIndex = null;
+
+    // Initialize the app
+    document.addEventListener('DOMContentLoaded', function() {
+      refreshSheets();
+      setupEventListeners();
+    });
+
+    function setupEventListeners() {
+      // Sheet selection change
+      document.getElementById('sheetSelect').addEventListener('change', function() {
+        const selectedSheet = this.value;
+        currentSheetName = selectedSheet;
+        
+        const hasSheet = selectedSheet !== '';
+        document.getElementById('addColumnBtn').disabled = !hasSheet;
+        document.getElementById('addRowBtn').disabled = !hasSheet;
+        document.getElementById('deleteSheetBtn').disabled = !hasSheet;
+        document.getElementById('loadDataBtn').disabled = !hasSheet;
+        
+        if (hasSheet) {
+          showSheetInfo(selectedSheet);
+          loadSheetColumns(selectedSheet);
+        } else {
+          hideSheetInfo();
+        }
+      });
+
+      // Enter key handlers
+      document.getElementById('newColumnInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          addColumn();
+        }
+      });
+
+      document.getElementById('newSheetName').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          createSheet();
+        }
+      });
+
+      document.getElementById('columnName').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          addColumnToSheet();
+        }
+      });
+    }
+
+    // Show response function
+    function showResponse(message, type = 'loading') {
+      const responseDiv = document.getElementById('response');
+      responseDiv.innerHTML = message;
+      responseDiv.className = 'response ' + type;
+      responseDiv.style.display = 'block';
+      
+      if (type !== 'loading') {
+        setTimeout(() => {
+          responseDiv.style.display = 'none';
+        }, 5000);
+      }
+    }
+
+    // Refresh sheets function
+    function refreshSheets() {
+      showResponse('🔄 Loading sheets...', 'loading');
+      
+      google.script.run
+        .withSuccessHandler(function(sheets) {
+          const select = document.getElementById('sheetSelect');
+          select.innerHTML = '<option value="">Select a sheet...</option>';
+          
+          sheets.forEach(sheet => {
+            const option = document.createElement('option');
+            option.value = sheet.name;
+            option.textContent = sheet.name;
+            select.appendChild(option);
+          });
+          
+          showResponse(`✅ Loaded ${sheets.length} sheets successfully!`, 'success');
+        })
+        .withFailureHandler(function(error) {
+          showResponse('❌ Failed to load sheets: ' + error.toString(), 'error');
+        })
+        .getAllSheets();
+    }
+
+    // Show/hide sheet info
+    function showSheetInfo(sheetName) {
+      // Get sheet URL from the server
+      google.script.run
+        .withSuccessHandler(function(sheets) {
+          const sheet = sheets.find(s => s.name === sheetName);
+          if (sheet && sheet.url) {
+            document.getElementById('sheetUrl').href = sheet.url;
+            document.getElementById('sheetInfo').style.display = 'block';
+          }
+        })
+        .getAllSheets();
+    }
+
+    function hideSheetInfo() {
+      document.getElementById('sheetInfo').style.display = 'none';
+    }
+
+    // Load sheet columns
+    function loadSheetColumns(sheetName) {
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            currentColumns = result.columns;
+          }
+        })
+        .getSheetColumns(sheetName);
+    }
+
+    // Modal functions
+    function showCreateSheetModal() {
+      currentColumns = [];
+      document.getElementById('newSheetName').value = '';
+      document.getElementById('newColumnInput').value = '';
+      document.getElementById('columnsDisplay').innerHTML = '';
+      document.getElementById('createSheetModal').style.display = 'block';
+    }
+
+    function closeCreateSheetModal() {
+      document.getElementById('createSheetModal').style.display = 'none';
+    }
+
+    function showAddColumnModal() {
+      if (!currentSheetName) {
+        showResponse('❌ Please select a sheet first!', 'error');
+        return;
+      }
+      document.getElementById('columnName').value = '';
+      document.getElementById('addColumnModal').style.display = 'block';
+    }
+
+    function closeAddColumnModal() {
+      document.getElementById('addColumnModal').style.display = 'none';
+    }
+
+    function showAddRowModal() {
+      if (!currentSheetName) {
+        showResponse('❌ Please select a sheet first!', 'error');
+        return;
+      }
+      
+      if (currentColumns.length === 0) {
+        showResponse('❌ No columns found. Please add columns first!', 'error');
+        return;
+      }
+      
+      const container = document.getElementById('rowInputsContainer');
+      container.innerHTML = '';
+      
+      currentColumns.forEach((column, index) => {
+        const inputGroup = document.createElement('div');
+        inputGroup.className = 'row-input-group';
+        inputGroup.innerHTML = `
+          <label>${column}:</label>
+          <input type="text" id="rowInput${index}" placeholder="Enter ${column}...">
+        `;
+        container.appendChild(inputGroup);
+      });
+      
+      document.getElementById('addRowModal').style.display = 'block';
+    }
+
+    function closeAddRowModal() {
+      document.getElementById('addRowModal').style.display = 'none';
+    }
+
+    function showEditRowModal(rowData, rowIndex) {
+      currentEditRowIndex = rowIndex;
+      const container = document.getElementById('editRowInputsContainer');
+      container.innerHTML = '';
+      
+      currentColumns.forEach((column, index) => {
+        const inputGroup = document.createElement('div');
+        inputGroup.className = 'row-input-group';
+        inputGroup.innerHTML = `
+          <label>${column}:</label>
+          <input type="text" id="editRowInput${index}" value="${rowData[index] || ''}" placeholder="Enter ${column}...">
+        `;
+        container.appendChild(inputGroup);
+      });
+      
+      document.getElementById('editRowModal').style.display = 'block';
+    }
+
+    function closeEditRowModal() {
+      document.getElementById('editRowModal').style.display = 'none';
+    }
+
+    function showDeleteSheetModal() {
+      if (!currentSheetName) {
+        showResponse('❌ Please select a sheet first!', 'error');
+        return;
+      }
+      
+      document.getElementById('deleteSheetName').textContent = currentSheetName;
+      document.getElementById('deleteSheetModal').style.display = 'block';
+    }
+
+    function closeDeleteSheetModal() {
+      document.getElementById('deleteSheetModal').style.display = 'none';
+    }
+
+    // Column management functions
+    function addColumn() {
+      const input = document.getElementById('newColumnInput');
+      const columnName = input.value.trim();
+      
+      if (!columnName) {
+        showResponse('❌ Please enter a column name!', 'error');
+        return;
+      }
+      
+      if (currentColumns.includes(columnName)) {
+        showResponse('❌ Column already exists!', 'error');
+        return;
+      }
+      
+      currentColumns.push(columnName);
+      input.value = '';
+      updateColumnsDisplay();
+    }
+
+    function removeColumn(index) {
+      currentColumns.splice(index, 1);
+      updateColumnsDisplay();
+    }
+
+    function updateColumnsDisplay() {
+      const display = document.getElementById('columnsDisplay');
+      display.innerHTML = '';
+      
+      currentColumns.forEach((column, index) => {
+        const tag = document.createElement('span');
+        tag.className = 'column-tag';
+        tag.innerHTML = `${column} <span class="remove" onclick="removeColumn(${index})">×</span>`;
+        display.appendChild(tag);
+      });
+    }
+
+    // Sheet operations
+    function createSheet() {
+      const sheetName = document.getElementById('newSheetName').value.trim();
+      
+      if (!sheetName) {
+        showResponse('❌ Please enter a sheet name!', 'error');
+        return;
+      }
+      
+      if (currentColumns.length === 0) {
+        showResponse('❌ Please add at least one column!', 'error');
+        return;
+      }
+      
+      showResponse('🔄 Creating sheet...', 'loading');
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showResponse(result.message, 'success');
+            closeCreateSheetModal();
+            refreshSheets();
+          } else {
+            showResponse(result.message, 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          showResponse('❌ Failed to create sheet: ' + error.toString(), 'error');
+        })
+        .createNewSheet(sheetName, currentColumns);
+    }
+
+    function addColumnToSheet() {
+      const columnName = document.getElementById('columnName').value.trim();
+      
+      if (!columnName) {
+        showResponse('❌ Please enter a column name!', 'error');
+        return;
+      }
+      
+      showResponse('🔄 Adding column...', 'loading');
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showResponse(result.message, 'success');
+            closeAddColumnModal();
+            loadSheetColumns(currentSheetName);
+          } else {
+            showResponse(result.message, 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          showResponse('❌ Failed to add column: ' + error.toString(), 'error');
+        })
+        .addColumn(currentSheetName, columnName);
+    }
+
+    function addRowToSheet() {
+      const rowData = [];
+      
+      for (let i = 0; i < currentColumns.length; i++) {
+        const input = document.getElementById(`rowInput${i}`);
+        rowData.push(input ? input.value : '');
+      }
+      
+      showResponse('🔄 Adding row...', 'loading');
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showResponse(result.message, 'success');
+            closeAddRowModal();
+            // Optionally reload data
+            if (document.querySelector('.data-table')) {
+              loadSheetData();
+            }
+          } else {
+            showResponse(result.message, 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          showResponse('❌ Failed to add row: ' + error.toString(), 'error');
+        })
+        .addRow(currentSheetName, rowData);
+    }
+
+    function updateRowData() {
+      const rowData = [];
+      
+      for (let i = 0; i < currentColumns.length; i++) {
+        const input = document.getElementById(`editRowInput${i}`);
+        rowData.push(input ? input.value : '');
+      }
+      
+      showResponse('🔄 Updating row...', 'loading');
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showResponse(result.message, 'success');
+            closeEditRowModal();
+            loadSheetData();
+          } else {
+            showResponse(result.message, 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          showResponse('❌ Failed to update row: ' + error.toString(), 'error');
+        })
+        .updateRow(currentSheetName, currentEditRowIndex, rowData);
+    }
+
+    function confirmDeleteSheet() {
+      showResponse('🔄 Deleting sheet...', 'loading');
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showResponse(result.message, 'success');
+            closeDeleteSheetModal();
+            refreshSheets();
+            // Reset UI
+            document.getElementById('sheetSelect').value = '';
+            currentSheetName = '';
+            hideSheetInfo();
+            clearTable();
+          } else {
+            showResponse(result.message, 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          showResponse('❌ Failed to delete sheet: ' + error.toString(), 'error');
+        })
+        .deleteSheet(currentSheetName);
+    }
+
+    // Data management functions
+    function loadSheetData() {
+      if (!currentSheetName) {
+        showResponse('❌ Please select a sheet first!', 'error');
+        return;
+      }
+      
+      showResponse('🔄 Loading data...', 'loading');
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            displayData(result);
+            showResponse(`✅ Loaded ${result.data.length} rows from "${result.sheetName}"`, 'success');
+          } else {
+            showResponse(result.message || '❌ Failed to load data', 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          showResponse('❌ Failed to load data: ' + error.toString(), 'error');
+        })
+        .getAllData(currentSheetName);
+    }
+
+
+
+function displayData(result) {
+     const container = document.getElementById('dataContainer');
+     
+     if (!result.data || result.data.length === 0) {
+       container.innerHTML = `
+         <div class="info">
+           <p>📝 No data found in sheet "${result.sheetName}". Add some rows to get started!</p>
+         </div>
+       `;
+       return;
+     }
+     
+     // Update current columns
+     currentColumns = result.columns;
+     
+     // Create stats card
+     const statsHtml = `
+       <div class="stats-card">
+         <h3>${result.data.length}</h3>
+         <p>Total Rows in "${result.sheetName}"</p>
+       </div>
+     `;
+     
+     // Create table
+     let tableHtml = `
+       <div class="table-container">
+         <table class="data-table">
+           <thead>
+             <tr>
+     `;
+     
+     // Add column headers
+     result.columns.forEach(column => {
+       tableHtml += `<th>${column}</th>`;
+     });
+     tableHtml += `<th>Actions</th></tr></thead><tbody>`;
+     
+     // Add data rows
+     result.data.forEach((row, index) => {
+       tableHtml += `<tr>`;
+       
+       // Add data cells (excluding the last element which is the row index)
+       for (let i = 0; i < result.columns.length; i++) {
+         const cellValue = row[i] !== undefined ? row[i] : '';
+         tableHtml += `<td>${cellValue}</td>`;
+       }
+       
+       // Add action buttons
+       const actualRowIndex = row[row.length - 1]; // Last element is the actual row number
+       tableHtml += `
+         <td>
+           <div class="action-buttons">
+             <button class="action-btn edit-btn" onclick="editRow(${index}, ${actualRowIndex})">✏️ Edit</button>
+             <button class="action-btn delete-btn" onclick="deleteRow(${actualRowIndex})">🗑️ Delete</button>
+           </div>
+         </td>
+       `;
+       tableHtml += `</tr>`;
+     });
+     
+     tableHtml += `</tbody></table></div>`;
+     
+     container.innerHTML = statsHtml + tableHtml;
+   }
+
+   function editRow(displayIndex, actualRowIndex) {
+     // Get the current data for this row
+     const table = document.querySelector('.data-table tbody');
+     const row = table.rows[displayIndex];
+     const rowData = [];
+     
+     // Extract data from table cells (excluding the actions column)
+     for (let i = 0; i < currentColumns.length; i++) {
+       rowData.push(row.cells[i].textContent);
+     }
+     
+     showEditRowModal(rowData, actualRowIndex);
+   }
+
+   function deleteRow(rowIndex) {
+     if (!confirm(`Are you sure you want to delete row ${rowIndex}? This action cannot be undone.`)) {
+       return;
+     }
+     
+     showResponse('🔄 Deleting row...', 'loading');
+     
+     google.script.run
+       .withSuccessHandler(function(result) {
+         if (result.success) {
+           showResponse(result.message, 'success');
+           loadSheetData(); // Reload data to reflect changes
+         } else {
+           showResponse(result.message, 'error');
+         }
+       })
+       .withFailureHandler(function(error) {
+         showResponse('❌ Failed to delete row: ' + error.toString(), 'error');
+       })
+       .deleteRow(currentSheetName, rowIndex);
+   }
+
+   function clearTable() {
+     document.getElementById('dataContainer').innerHTML = '';
+     showResponse('🧹 Table cleared', 'success');
+   }
+
+   // Close modals when clicking outside
+   window.onclick = function(event) {
+     const modals = document.querySelectorAll('.modal');
+     modals.forEach(modal => {
+       if (event.target === modal) {
+         modal.style.display = 'none';
+       }
+     });
+   }
+
+   // Handle escape key for modals
+   document.addEventListener('keydown', function(event) {
+     if (event.key === 'Escape') {
+       const modals = document.querySelectorAll('.modal');
+       modals.forEach(modal => {
+         if (modal.style.display === 'block') {
+           modal.style.display = 'none';
+         }
+       });
+     }
+   });
+
+   // Utility functions
+   function formatDate(date) {
+     return new Date(date).toLocaleDateString();
+   }
+
+   function formatTime(date) {
+     return new Date(date).toLocaleTimeString();
+   }
+
+   function sanitizeHtml(text) {
+     const div = document.createElement('div');
+     div.textContent = text;
+     return div.innerHTML;
+   }
+
+   // Auto-save functionality (optional)
+   let autoSaveTimer;
+   function scheduleAutoSave() {
+     clearTimeout(autoSaveTimer);
+     autoSaveTimer = setTimeout(() => {
+       // Could implement auto-save logic here
+       console.log('Auto-save triggered');
+     }, 30000); // 30 seconds
+   }
+
+   // Export functionality (bonus feature)
+   function exportToCSV() {
+     if (!currentSheetName) {
+       showResponse('❌ Please select a sheet first!', 'error');
+       return;
+     }
+     
+     showResponse('🔄 Preparing export...', 'loading');
+     
+     google.script.run
+       .withSuccessHandler(function(result) {
+         if (result.success) {
+           downloadCSV(result.data, result.columns, result.sheetName);
+           showResponse('✅ Export completed successfully!', 'success');
+         } else {
+           showResponse('❌ Export failed: ' + (result.message || 'Unknown error'), 'error');
+         }
+       })
+       .withFailureHandler(function(error) {
+         showResponse('❌ Export failed: ' + error.toString(), 'error');
+       })
+       .getAllData(currentSheetName);
+   }
+
+   function downloadCSV(data, columns, sheetName) {
+     let csvContent = columns.join(',') + '\n';
+     
+     data.forEach(row => {
+       // Exclude the last element (row index) when creating CSV
+       const csvRow = row.slice(0, -1).map(cell => {
+         // Escape quotes and wrap in quotes if contains comma
+         const cellStr = String(cell || '');
+         if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+           return '"' + cellStr.replace(/"/g, '""') + '"';
+         }
+         return cellStr;
+       }).join(',');
+       csvContent += csvRow + '\n';
+     });
+     
+     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+     const link = document.createElement('a');
+     const url = URL.createObjectURL(blob);
+     link.setAttribute('href', url);
+     link.setAttribute('download', `${sheetName}_${new Date().toISOString().split('T')[0]}.csv`);
+     link.style.visibility = 'hidden';
+     document.body.appendChild(link);
+     link.click();
+     document.body.removeChild(link);
+   }
+
+   // Search functionality (bonus feature)
+   function searchData(query) {
+     const table = document.querySelector('.data-table');
+     if (!table) return;
+     
+     const rows = table.querySelectorAll('tbody tr');
+     const searchTerm = query.toLowerCase();
+     
+     rows.forEach(row => {
+       const cells = row.querySelectorAll('td');
+       let found = false;
+       
+       // Search in all cells except the actions column
+       for (let i = 0; i < cells.length - 1; i++) {
+         if (cells[i].textContent.toLowerCase().includes(searchTerm)) {
+           found = true;
+           break;
+         }
+       }
+       
+       row.style.display = found ? '' : 'none';
+     });
+   }
+
+   // Add search functionality to the UI
+   function addSearchBox() {
+     const dataSection = document.querySelector('.section:nth-child(2)');
+     const searchHtml = `
+       <div class="form-group">
+         <label for="searchInput">🔍 Search Data:</label>
+         <input type="text" id="searchInput" placeholder="Type to search..." onkeyup="searchData(this.value)">
+       </div>
+     `;
+     dataSection.querySelector('h2').insertAdjacentHTML('afterend', searchHtml);
+   }
+
+   // Initialize search box when data is loaded
+   const originalDisplayData = displayData;
+   displayData = function(result) {
+     originalDisplayData(result);
+     // Add search box if it doesn't exist
+     if (!document.getElementById('searchInput')) {
+       addSearchBox();
+     }
+   };
+
+   // Batch operations (bonus feature)
+   function selectAllRows() {
+     const checkboxes = document.querySelectorAll('.row-checkbox');
+     checkboxes.forEach(cb => cb.checked = true);
+   }
+
+   function deselectAllRows() {
+     const checkboxes = document.querySelectorAll('.row-checkbox');
+     checkboxes.forEach(cb => cb.checked = false);
+   }
+
+   function deleteSelectedRows() {
+     const checkboxes = document.querySelectorAll('.row-checkbox:checked');
+     if (checkboxes.length === 0) {
+       showResponse('❌ No rows selected!', 'error');
+       return;
+     }
+     
+     if (!confirm(`Are you sure you want to delete ${checkboxes.length} selected rows? This action cannot be undone.`)) {
+       return;
+     }
+     
+     const rowIndices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.rowIndex));
+     
+     showResponse(`🔄 Deleting ${rowIndices.length} rows...`, 'loading');
+     
+     // Delete rows in reverse order to maintain indices
+     rowIndices.sort((a, b) => b - a);
+     
+     let deletedCount = 0;
+     const deleteNext = () => {
+       if (deletedCount >= rowIndices.length) {
+         showResponse(`✅ Successfully deleted ${deletedCount} rows!`, 'success');
+         loadSheetData();
+         return;
+       }
+       
+       google.script.run
+         .withSuccessHandler(() => {
+           deletedCount++;
+           deleteNext();
+         })
+         .withFailureHandler((error) => {
+           showResponse(`❌ Failed to delete row ${rowIndices[deletedCount]}: ${error}`, 'error');
+         })
+         .deleteRow(currentSheetName, rowIndices[deletedCount]);
+     };
+     
+     deleteNext();
+   }
+
+   // Keyboard shortcuts
+   document.addEventListener('keydown', function(event) {
+     // Ctrl+N: New Sheet
+     if (event.ctrlKey && event.key === 'n') {
+       event.preventDefault();
+       showCreateSheetModal();
+     }
+     
+     // Ctrl+R: Refresh
+     if (event.ctrlKey && event.key === 'r') {
+       event.preventDefault();
+       refreshSheets();
+     }
+     
+     // Ctrl+L: Load Data
+     if (event.ctrlKey && event.key === 'l') {
+       event.preventDefault();
+       loadSheetData();
+     }
+     
+     // Ctrl+E: Export (if implemented)
+     if (event.ctrlKey && event.key === 'e') {
+       event.preventDefault();
+       exportToCSV();
+     }
+   });
+
+   // Show keyboard shortcuts help
+   function showKeyboardShortcuts() {
+     const shortcuts = `
+       <div class="info">
+         <h3>⌨️ Keyboard Shortcuts</h3>
+         <ul style="list-style: none; padding: 0;">
+           <li><strong>Ctrl+R:</strong> Refresh Sheets</li>
+           <li><strong>Ctrl+L:</strong> Load Data</li>
+           <li><strong>Ctrl+E:</strong> Export to CSV</li>
+           <li><strong>Escape:</strong> Close Modals</li>
+         </ul>
+       </div>
+     `;
+     
+     const tempDiv = document.createElement('div');
+     tempDiv.innerHTML = shortcuts;
+     tempDiv.style.position = 'fixed';
+     tempDiv.style.top = '50%';
+     tempDiv.style.left = '50%';
+     tempDiv.style.transform = 'translate(-50%, -50%)';
+     tempDiv.style.zIndex = '9999';
+     tempDiv.style.background = 'white';
+     tempDiv.style.padding = '20px';
+     tempDiv.style.borderRadius = '10px';
+     tempDiv.style.boxShadow = '0 10px 30px rgba(0,0,0,0.3)';
+     
+     document.body.appendChild(tempDiv);
+     
+     setTimeout(() => {
+       document.body.removeChild(tempDiv);
+     }, 5000);
+   }
+
+   // Add help button
+   function addHelpButton() {
+     const helpButton = document.createElement('button');
+     helpButton.innerHTML = '❓ Help';
+     helpButton.onclick = showKeyboardShortcuts;
+     helpButton.style.position = 'fixed';
+     helpButton.style.bottom = '20px';
+     helpButton.style.right = '20px';
+     helpButton.style.zIndex = '1000';
+     document.body.appendChild(helpButton);
+   }
+
+   // Initialize help button
+   window.addEventListener('load', addHelpButton);
+
+   // Performance monitoring
+   function logPerformance(operation, startTime) {
+     const endTime = performance.now();
+     const duration = endTime - startTime;
+     console.log(`${operation} took ${duration.toFixed(2)} milliseconds`);
+   }
+
+   // Error handling wrapper
+   function withErrorHandling(fn, context = 'Operation') {
+     return function(...args) {
+       try {
+         const startTime = performance.now();
+         const result = fn.apply(this, args);
+         logPerformance(context, startTime);
+         return result;
+       } catch (error) {
+         console.error(`Error in ${context}:`, error);
+         showResponse(`❌ ${context} failed: ${error.message}`, 'error');
+       }
+     };
+   }
+
+   // Wrap critical functions with error handling
+   refreshSheets = withErrorHandling(refreshSheets, 'Refresh Sheets');
+   loadSheetData = withErrorHandling(loadSheetData, 'Load Sheet Data');
+   createSheet = withErrorHandling(createSheet, 'Create Sheet');
+
+   console.log('🚀 Dynamic Google Sheets Automation loaded successfully!');
+  </script>
+</body>
+
+</html>

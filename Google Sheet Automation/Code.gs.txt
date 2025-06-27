@@ -1,0 +1,412 @@
+let SHEET_ID = '';
+
+const AUTHORIZED_USERS = [
+  'pm@satvasolutions.com'
+];
+
+function doGet() {
+  const userEmail = Session.getActiveUser().getEmail();
+  
+  if (!AUTHORIZED_USERS.includes(userEmail)) {
+    return HtmlService.createHtmlOutput(`
+      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 30px; text-align: center; background: #f8f9fa; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <h2 style="color: #dc3545;">🚫 Access Denied</h2>
+        <p style="color: #666; margin: 20px 0;">You are not authorized to use this application.</p>
+        <p style="color: #999; font-size: 14px;">Your email: <strong>${userEmail}</strong></p>
+        <p style="color: #999; font-size: 12px; margin-top: 30px;">Contact the app owner if you need access.</p>
+      </div>
+    `).setTitle('Access Denied - Dynamic Sheets App');
+  }
+
+  return HtmlService.createTemplateFromFile('index').evaluate()
+    .setTitle('Dynamic Google Sheets Automation')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+function getOrCreateSpreadsheet() {
+  try {
+    SHEET_ID = PropertiesService.getScriptProperties().getProperty('SHEET_ID');
+    
+    let spreadsheet;
+    
+    if (SHEET_ID) {
+      try {
+        spreadsheet = SpreadsheetApp.openById(SHEET_ID);
+        spreadsheet.getName();
+      } catch (e) {
+        SHEET_ID = null;
+      }
+    }
+    
+    if (!SHEET_ID) {
+      spreadsheet = SpreadsheetApp.create('Dynamic Sheets Automation');
+      SHEET_ID = spreadsheet.getId();
+      PropertiesService.getScriptProperties().setProperty('SHEET_ID', SHEET_ID);
+      
+      // Delete the default sheet
+      const defaultSheet = spreadsheet.getActiveSheet();
+      if (defaultSheet.getName() === 'Sheet1') {
+        spreadsheet.deleteSheet(defaultSheet);
+      }
+    }
+    
+    return spreadsheet;
+    
+  } catch (error) {
+    throw new Error('Spreadsheet access failed: ' + error.toString());
+  }
+}
+
+function setupSheetHeaders(sheet, columns) {
+  if (!columns || columns.length === 0) {
+    columns = ['Column 1'];
+  }
+  
+  sheet.getRange(1, 1, 1, columns.length).setValues([columns]);
+  sheet.getRange(1, 1, 1, columns.length).setFontWeight('bold');
+  sheet.getRange(1, 1, 1, columns.length).setBackground('#4CAF50');
+  sheet.getRange(1, 1, 1, columns.length).setFontColor('white');
+  sheet.autoResizeColumns(1, columns.length);
+}
+
+function getSheetUrl(sheetName) {
+  try {
+    const spreadsheet = getOrCreateSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    if (!sheet) {
+      return spreadsheet.getUrl();
+    }
+    
+    const sheetId = sheet.getSheetId();
+    return `${spreadsheet.getUrl()}#gid=${sheetId}`;
+  } catch (error) {
+    return '';
+  }
+}
+
+function createNewSheet(sheetName, columns) {
+  try {
+    if (!sheetName || sheetName.trim() === '') {
+      return { success: false, message: '❌ Please provide a valid sheet name!' };
+    }
+    
+    if (!columns || columns.length === 0) {
+      return { success: false, message: '❌ Please provide at least one column!' };
+    }
+    
+    const cleanSheetName = sheetName.trim();
+    const spreadsheet = getOrCreateSpreadsheet();
+    
+    // Check if sheet already exists
+    try {
+      const existingSheet = spreadsheet.getSheetByName(cleanSheetName);
+      if (existingSheet) {
+        return { success: false, message: `❌ Sheet "${cleanSheetName}" already exists!` };
+      }
+    } catch (e) {
+      // Sheet doesn't exist, which is what we want
+    }
+    
+    // Create new sheet
+    const newSheet = spreadsheet.insertSheet(cleanSheetName);
+    setupSheetHeaders(newSheet, columns);
+    
+    const sheetUrl = getSheetUrl(cleanSheetName);
+    return { 
+      success: true, 
+      message: `✅ Created new sheet: "${cleanSheetName}" with ${columns.length} columns`,
+      url: sheetUrl 
+    };
+    
+  } catch (error) {
+    return { success: false, message: '❌ Failed to create sheet: ' + error.toString() };
+  }
+}
+
+function getAllSheets() {
+  try {
+    const spreadsheet = getOrCreateSpreadsheet();
+    const sheets = spreadsheet.getSheets();
+    return sheets.map(sheet => ({
+      name: sheet.getName(),
+      url: getSheetUrl(sheet.getName())
+    }));
+  } catch (error) {
+    return [];
+  }
+}
+
+function getSheetColumns(sheetName) {
+  try {
+    if (!sheetName) {
+      return { success: false, columns: [] };
+    }
+    
+    const spreadsheet = getOrCreateSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    
+    if (!sheet) {
+      return { success: false, columns: [] };
+    }
+    
+    const lastColumn = sheet.getLastColumn();
+    if (lastColumn === 0) {
+      return { success: true, columns: [] };
+    }
+    
+    const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+    return { success: true, columns: headers.filter(col => col !== '') };
+    
+  } catch (error) {
+    return { success: false, columns: [] };
+  }
+}
+
+function addColumn(sheetName, columnName) {
+  try {
+    if (!sheetName || !columnName) {
+      return { success: false, message: '❌ Sheet name and column name are required!' };
+    }
+    
+    const spreadsheet = getOrCreateSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    
+    if (!sheet) {
+      return { success: false, message: `❌ Sheet "${sheetName}" not found!` };
+    }
+    
+    const lastColumn = sheet.getLastColumn();
+    const newColumnIndex = lastColumn + 1;
+    
+    sheet.getRange(1, newColumnIndex).setValue(columnName);
+    sheet.getRange(1, newColumnIndex).setFontWeight('bold');
+    sheet.getRange(1, newColumnIndex).setBackground('#4CAF50');
+    sheet.getRange(1, newColumnIndex).setFontColor('white');
+    sheet.autoResizeColumn(newColumnIndex);
+    
+    return { 
+      success: true, 
+      message: `✅ Added column "${columnName}" to sheet "${sheetName}"` 
+    };
+    
+  } catch (error) {
+    return { success: false, message: '❌ Failed to add column: ' + error.toString() };
+  }
+}
+
+function addRow(sheetName, rowData) {
+  try {
+    if (!sheetName || !rowData || rowData.length === 0) {
+      return { success: false, message: '❌ Sheet name and row data are required!' };
+    }
+    
+    const spreadsheet = getOrCreateSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    
+    if (!sheet) {
+      return { success: false, message: `❌ Sheet "${sheetName}" not found!` };
+    }
+    
+    const numColumns = sheet.getLastColumn();
+    
+    // Pad or trim the row data to match the number of columns
+    const paddedRowData = [...rowData];
+    while (paddedRowData.length < numColumns) {
+      paddedRowData.push('');
+    }
+    paddedRowData.splice(numColumns);
+    
+    sheet.appendRow(paddedRowData);
+    
+    const sheetUrl = getSheetUrl(sheetName);
+    return { 
+      success: true, 
+      message: `✅ Added new row to "${sheetName}"`,
+      url: sheetUrl 
+    };
+    
+  } catch (error) {
+    return { success: false, message: '❌ Failed to add row: ' + error.toString() };
+  }
+}
+
+function getAllData(sheetName) {
+  try {
+    if (!sheetName) {
+      return { success: false, data: [], columns: [] };
+    }
+    
+    const spreadsheet = getOrCreateSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    
+    if (!sheet) {
+      return { success: false, data: [], columns: [] };
+    }
+    
+    const lastRow = sheet.getLastRow();
+    const lastColumn = sheet.getLastColumn();
+    
+    if (lastRow <= 1 || lastColumn === 0) {
+      const headers = lastColumn > 0 ? sheet.getRange(1, 1, 1, lastColumn).getValues()[0] : [];
+      return { 
+        success: true, 
+        data: [], 
+        columns: headers,
+        sheetName: sheetName,
+        sheetUrl: getSheetUrl(sheetName)
+      };
+    }
+    
+    const allData = sheet.getDataRange().getValues();
+    const headers = allData[0];
+    const dataRows = [];
+    
+    for (let i = 1; i < allData.length; i++) {
+      // Skip completely empty rows
+      if (allData[i].some(cell => cell !== '')) {
+        const rowWithIndex = [...allData[i], i + 1]; // Add actual row number
+        dataRows.push(rowWithIndex);
+      }
+    }
+    
+    return { 
+      success: true, 
+      data: dataRows, 
+      columns: headers,
+      sheetName: sheetName,
+      sheetUrl: getSheetUrl(sheetName)
+    };
+    
+  } catch (error) {
+    return { 
+      success: false, 
+      data: [], 
+      columns: [],
+      message: 'Failed to get data: ' + error.toString() 
+    };
+  }
+}
+
+function deleteRow(sheetName, rowIndex) {
+  try {
+    if (!sheetName || !rowIndex || rowIndex < 2) {
+      return { success: false, message: '❌ Invalid parameters for row deletion!' };
+    }
+    
+    const spreadsheet = getOrCreateSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    
+    if (!sheet) {
+      return { success: false, message: `❌ Sheet "${sheetName}" not found!` };
+    }
+    
+    const lastRow = sheet.getLastRow();
+    if (rowIndex > lastRow) {
+      return { success: false, message: '❌ Row index out of range!' };
+    }
+    
+    // Get the data before clearing for confirmation
+    const deletedRow = sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
+    
+    // Clear the row content
+    sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn()).clearContent();
+    
+    const sheetUrl = getSheetUrl(sheetName);
+    return { 
+      success: true, 
+      message: `✅ Cleared row ${rowIndex} from "${sheetName}"`,
+      url: sheetUrl 
+    };
+    
+  } catch (error) {
+    return { success: false, message: '❌ Failed to delete row: ' + error.toString() };
+  }
+}
+
+function updateRow(sheetName, rowIndex, rowData) {
+  try {
+    if (!sheetName || !rowIndex || rowIndex < 2 || !rowData) {
+      return { success: false, message: '❌ Invalid parameters for row update!' };
+    }
+    
+    const spreadsheet = getOrCreateSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    
+    if (!sheet) {
+      return { success: false, message: `❌ Sheet "${sheetName}" not found!` };
+    }
+    
+    const lastRow = sheet.getLastRow();
+    const numColumns = sheet.getLastColumn();
+    
+    if (rowIndex > lastRow) {
+      return { success: false, message: '❌ Row index out of range!' };
+    }
+    
+    // Pad or trim the row data to match the number of columns
+    const paddedRowData = [...rowData];
+    while (paddedRowData.length < numColumns) {
+      paddedRowData.push('');
+    }
+    paddedRowData.splice(numColumns);
+    
+    // Update the row
+    sheet.getRange(rowIndex, 1, 1, numColumns).setValues([paddedRowData]);
+    
+    const sheetUrl = getSheetUrl(sheetName);
+    return { 
+      success: true, 
+      message: `✅ Updated row ${rowIndex} in "${sheetName}"`,
+      url: sheetUrl 
+    };
+    
+  } catch (error) {
+    return { success: false, message: '❌ Failed to update row: ' + error.toString() };
+  }
+}
+
+function deleteSheet(sheetName) {
+  try {
+    if (!sheetName) {
+      return { success: false, message: '❌ Sheet name is required!' };
+    }
+    
+    const spreadsheet = getOrCreateSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    
+    if (!sheet) {
+      return { success: false, message: `❌ Sheet "${sheetName}" not found!` };
+    }
+    
+    // Don't delete if it's the only sheet
+    const allSheets = spreadsheet.getSheets();
+    if (allSheets.length === 1) {
+      return { success: false, message: '❌ Cannot delete the last remaining sheet!' };
+    }
+    
+    spreadsheet.deleteSheet(sheet);
+    
+    return { 
+      success: true, 
+      message: `✅ Deleted sheet "${sheetName}"` 
+    };
+    
+  } catch (error) {
+    return { success: false, message: '❌ Failed to delete sheet: ' + error.toString() };
+  }
+}
+
+function testApp() {
+  try {
+    const result = getOrCreateSpreadsheet();
+    return { success: true, message: 'Success! Spreadsheet created: ' + result.getUrl() };
+  } catch (error) {
+    return { success: false, message: 'Test failed: ' + error.toString() };
+  }
+}
+
+
